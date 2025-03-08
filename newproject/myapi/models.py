@@ -66,6 +66,12 @@ class BaseCompartment(models.Model):
                         compartment_id=self.id,
                         intake_time=time
                     )
+        elif self.orario_medicina:
+            CompartmentIntake.objects.create(
+                compartment_type=ContentType.objects.get_for_model(self.__class__),
+                compartment_id=self.id,
+                intake_time=self.orario_medicina  # One-time medicines now appear in "Pending"
+            )
 
     def __str__(self):
         return f"{self.medicine_name} ({'Repeated' if self.to_be_repeated else 'Single'})"
@@ -88,7 +94,7 @@ class CompartmentIntake(models.Model):
     compartment_id = models.PositiveIntegerField()
     compartment = GenericForeignKey('compartment_type', 'compartment_id')
 
-    intake_time = models.TimeField()
+    intake_time = models.TimeField(null=True, blank=True)  # Now optional for one-time meds
     taken       = models.BooleanField(default=False)
     taken_time  = models.DateTimeField(null=True, blank=True)
 

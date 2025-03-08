@@ -106,27 +106,84 @@ from django.contrib.contenttypes.models import ContentType
 
 @api_view(['POST'])
 def take_medicine_from_compartment(request, comp_id):
-    """Marks the next pending intake in the specified compartment as taken"""
+    """Marks the next pending intake OR a one-time medicine as taken"""
     
-    # Find the correct compartment model
     compartment_models = {1: Compartment1, 2: Compartment2, 3: Compartment3}
     CompartmentModel = compartment_models.get(comp_id)
 
     if not CompartmentModel:
         return Response({"error": "Invalid compartment ID"}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Find the next pending intake
+    # Try to find a pending repeated medicine intake
     pending_intake = CompartmentIntake.objects.filter(
         compartment_type=ContentType.objects.get_for_model(CompartmentModel),
         taken=False
     ).order_by('intake_time').first()
 
-    if not pending_intake:
-        return Response({"message": "No pending intakes found for this compartment"}, status=status.HTTP_404_NOT_FOUND)
+    if pending_intake:
+        pending_intake.mark_as_taken()
+        serializer = CompartmentIntakeSerializer(pending_intake)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
-    # Mark as taken
-    pending_intake.mark_as_taken()
-    
-    # Serialize and return the updated intake
-    serializer = CompartmentIntakeSerializer(pending_intake)
+    # If no pending repeated intake, check for a one-time medicine
+    one_time_medicine = CompartmentModel.objects.filter(
+        to_be_repeated=False, orario_medicina__isnull=False
+    ).first()
+
+    if one_time_medicine:
+        # Create a one-time intake record and mark it as taken
+        new_intake = CompartmentIntake.objects.create(
+            compartment_type=ContentType.objects.get_for_model(CompartmentModel),
+            compartment_id=one_time_medicine.id,
+            intake_time=one_time_medicine.orario_medicina,
+            taken=True,
+            taken_time=now()
+        )
+        serializer = CompartmentIntakeSerializer(new_intake)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    return Response({"message": "No pending intakes or one-time medicines found for this compartment"}, status=status.HTTP_404_NOT_FOUND)
+
+
+
+@api_view(['GET'])
+def get_pending_intakes_by_compartment(request, comp_id):
+    """Retrieve pending intakes for a specific compartment"""
+
+    # Map compartment ID to the correct model
+    compartment_models = {1: Compartment1, 2: Compartment2, 3: Compartment3}
+    CompartmentModel = compartment_models.get(comp_id)
+
+    if not CompartmentModel:
+        return Response({"error": "Invalid compartment ID"}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Filter pending intakes by compartment
+    pending_intakes = CompartmentIntake.objects.filter(
+        compartment_type=ContentType.objects.get_for_model(CompartmentModel),
+        taken=False
+    ).order_by('intake_time')
+
+    # Serialize and return the response
+    serializer = CompartmentIntakeSerializer(pending_intakes, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+def get_taken_intakes_by_compartment(request, comp_id):
+    """Retrieve taken intakes for a specific compartment"""
+
+    # Map compartment ID to the correct model
+    compartment_models = {1: Compartment1, 2: Compartment2, 3: Compartment3}
+    CompartmentModel = compartment_models.get(comp_id)
+
+    if not CompartmentModel:
+        return Response({"error": "Invalid compartment ID"}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Filter taken intakes by compartment
+    taken_intakes = CompartmentIntake.objects.filter(
+        compartment_type=ContentType.objects.get_for_model(CompartmentModel),
+        taken=True
+    ).order_by('-taken_time')  # Order by most recent taken intake first
+
+    # Serialize and return the response
+    serializer = CompartmentIntakeSerializer(taken_intakes, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)
