@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import User
-from .models import Compartment1, CompartmentHistory
+from .models import Compartment1, CompartmentIntake
 from django.utils.timezone import now
 
 class UserSerializer(serializers.ModelSerializer):
@@ -22,9 +22,15 @@ class MedicineSerializer(serializers.ModelSerializer):
         return data
 
 
-class CompartmentHistorySerializer(serializers.ModelSerializer):
+
+class MedicineSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Compartment1
+        fields = '__all__'
+
+class CompartmentIntakeSerializer(serializers.ModelSerializer):
     compartment_name = serializers.CharField(source="compartment.medicine_name", read_only=True)
 
     class Meta:
-        model = CompartmentHistory
-        fields = ['id', 'compartment_name', 'taken', 'taken_time']
+        model = CompartmentIntake
+        fields = ['id', 'compartment_name', 'intake_time', 'taken', 'taken_time']

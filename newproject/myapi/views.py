@@ -2,8 +2,8 @@ from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from .serializer import UserSerializer, MedicineSerializer, CompartmentHistorySerializer
-from .models import User, Compartment1, CompartmentHistory
+from .serializer import UserSerializer, MedicineSerializer, CompartmentIntakeSerializer
+from .models import User, Compartment1, CompartmentIntake
 from datetime import datetime
 from django.utils.timezone import localtime
 from django.utils.timezone import now
@@ -110,33 +110,27 @@ def get_daily_schedule(request):
         "one_time_medicines": one_time_serializer.data
     }, status=status.HTTP_200_OK)
 
+@api_view(['POST'])
+def mark_intake_as_taken(request, intake_id):
+    """Marks a specific intake instance as taken"""
+    intake = get_object_or_404(CompartmentIntake, id=intake_id)
+
+    if intake.taken:
+        return Response({"message": "This dose has already been taken."}, status=status.HTTP_400_BAD_REQUEST)
+
+    intake.mark_as_taken()
+    serializer = CompartmentIntakeSerializer(intake)
+    return Response(serializer.data, status=status.HTTP_200_OK)
 @api_view(['GET'])
-def get_compartment_history(request):
-    """Retrieve all medicine history"""
-    history = CompartmentHistory.objects.all().order_by('-taken_time')
-    serializer = CompartmentHistorySerializer(history, many=True)
+def get_pending_intakes(request):
+    """Retrieve all pending medicine intakes"""
+    pending_intakes = CompartmentIntake.objects.filter(taken=False).order_by('intake_time')
+    serializer = CompartmentIntakeSerializer(pending_intakes, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)
 
-@api_view(['POST'])
-def mark_as_taken(request, pk):
-    """Marks a medicine as taken and records the time in history"""
-    
-    medicine = get_object_or_404(Compartment1, pk=pk)
-
-    if medicine.taken:
-        return Response({"message": "This medicine has already been taken."}, status=status.HTTP_400_BAD_REQUEST)
-
-    # ✅ Update Compartment1 model
-    medicine.taken = True
-    medicine.taken_time = now()
-    medicine.save()
-
-    # ✅ Register the action in CompartmentHistory
-    history_entry = CompartmentHistory.objects.create(
-        compartment=medicine,
-        taken=True,
-        taken_time=medicine.taken_time
-    )
-
-    serializer = MedicineSerializer(medicine)
+@api_view(['GET'])
+def get_taken_intakes(request):
+    """Retrieve all medicines that have been taken with their timestamps"""
+    taken_intakes = CompartmentIntake.objects.filter(taken=True).order_by('-taken_time')
+    serializer = CompartmentIntakeSerializer(taken_intakes, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)

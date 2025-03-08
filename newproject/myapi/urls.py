@@ -14,7 +14,9 @@ urlpatterns = [
     path("medicines/create/", views.create_medicine, name="create_medicine"),
     path("medicines/<int:pk>/", views.medicine_detail, name="medicine_detail"),
     path("medicines/schedule/", views.get_daily_schedule, name="get_daily_schedule"),
-    path("medicines/<int:pk>/take/", views.mark_as_taken, name="mark_as_taken"),
-    path("medicines/history/", views.get_compartment_history, name="get_compartment_history"),
-
+    #path("medicines/<int:pk>/take/", views.mark_as_taken, name="mark_as_taken"),
+    path("medicines/intakes/pending/", views.get_pending_intakes, name="get_pending_intakes"),
+    path("medicines/intakes/<int:intake_id>/take/", views.mark_intake_as_taken, name="mark_intake_as_taken"),
+    path("medicines/intakes/taken/", views.get_taken_intakes, name="get_taken_intakes"),
 ]
+
