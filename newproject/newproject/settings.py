@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-rtb9ki_-%3rk7(*keb52w@xrs27e-%7ey0#fn0)-ti23%*t72a
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["127.0.0.1","192.168.1.101","myiotproject.ddns.net", "0b76-79-16-34-150.ngrok-free.app"]
+ALLOWED_HOSTS = ["127.0.0.1","192.168.1.101","myiotproject.ddns.net", "adversely-smooth-poodle.ngrok-free.app"]
 
 
 # Application definition
