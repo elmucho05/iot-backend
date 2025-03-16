@@ -204,7 +204,12 @@ def adafruit_webhook(request):
     """Handles Webhook updates from Adafruit IO and updates the database"""
     if request.method == 'POST':
         try:
-            data = json.loads(request.body)  # Read incoming data
+            data = json.loads(request.body)  # Read incoming JSON
+
+            # ✅ Handle cases where Adafruit sends an array (list of updates)
+            if isinstance(data, list):
+                data = data[0]  # Take the first item from the list
+
             feed_name = data.get("feed_key")  # Example: "comp1"
             new_value = int(data.get("value"))  # Number of medicines left
 
@@ -229,4 +234,3 @@ def adafruit_webhook(request):
             return JsonResponse({"error": str(e)}, status=400)
 
     return JsonResponse({"error": "Invalid request"}, status=400)
-
