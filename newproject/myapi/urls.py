@@ -18,6 +18,6 @@ urlpatterns = [
     path("medicines/intakes/<int:comp_id>/taken/", views.get_taken_intakes_by_compartment, name="get_taken_intakes_by_compartment"),
     
     #### ADAFRUIT
-    path("api/adafruit-webhook/", views.adafruit_webhook, name="adafruit_webhook"),
+    path("medicines/adafruit-webhook/", views.adafruit_webhook, name="adafruit_webhook"),
 
 ]
