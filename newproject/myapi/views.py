@@ -200,12 +200,13 @@ def get_taken_intakes_by_compartment(request, comp_id):
 ############ ADAFRUIT IMPLEMENTATION ############
 
 @csrf_exempt
+@api_view(['POST'])  # Use Django REST framework for better handling
 def adafruit_webhook(request):
     """Handles Webhook updates from Adafruit IO and updates the database"""
     if request.method == 'POST':
         try:
             data = json.loads(request.body)  # Read incoming JSON
-
+            
             # ✅ Handle cases where Adafruit sends an array (list of updates)
             if isinstance(data, list):
                 data = data[0]  # Take the first item from the list
