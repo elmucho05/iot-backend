@@ -15,7 +15,10 @@ from django.utils.timezone import localtime, now
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
+import logging
 
+# Enable logging
+logger = logging.getLogger(__name__)
 
 def get_compartment_model(compartment_id):
     """Return the correct compartment model based on the given ID."""
@@ -198,40 +201,27 @@ def get_taken_intakes_by_compartment(request, comp_id):
 
 
 ############ ADAFRUIT IMPLEMENTATION ############
-
 @csrf_exempt
-@api_view(['POST'])  # Use Django REST framework for better handling
+@api_view(['POST'])
 def adafruit_webhook(request):
     """Handles Webhook updates from Adafruit IO and updates the database"""
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)  # Read incoming JSON
-            
-            # ✅ Handle cases where Adafruit sends an array (list of updates)
-            if isinstance(data, list):
-                data = data[0]  # Take the first item from the list
 
-            feed_name = data.get("feed_key")  # Example: "comp1"
-            new_value = int(data.get("value"))  # Number of medicines left
+    try:
+        logger.info("Received Raw Data: %s", request.body)  # Logs raw request data
 
-            # Extract the compartment number from the feed name
-            if not feed_name.startswith("comp"):
-                return JsonResponse({"error": "Invalid feed name format"}, status=400)
+        data = request.data  # DRF automatically parses JSON
 
-            compartment_id = int(feed_name.replace("comp", ""))  # Convert "comp1" → 1
-            CompartmentModel, _ = get_compartment_model(compartment_id)
+        # ✅ Check if Adafruit is sending an array
+        if isinstance(data, list):
+            data = data[0]  # Take the first item from the list
 
-            if CompartmentModel:
-                compartment = CompartmentModel.objects.first()  # Assume 1 device per compartment
+        logger.info("Processed Data: %s", data)  # Logs parsed JSON data
 
-                if compartment:
-                    compartment.number_of_medicines = new_value
-                    compartment.save()
-                    return JsonResponse({"message": f"Updated {feed_name} to {new_value}"}, status=200)
+        feed_name = data.get("feed_key")
+        new_value = int(data.get("value"))
 
-            return JsonResponse({"error": f"No compartment found for {feed_name}"}, status=404)
+        return Response({"message": f"Received {feed_name} update with value {new_value}"}, status=status.HTTP_200_OK)
 
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=400)
-
-    return JsonResponse({"error": "Invalid request"}, status=400)
+    except Exception as e:
+        logger.error("Webhook Error: %s", str(e))
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
