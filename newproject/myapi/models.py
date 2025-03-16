@@ -25,7 +25,7 @@ class BaseCompartment(models.Model):
     orario_sera         = models.TimeField(null=True, blank=True)
 
     class Meta:
-        abstract = True  # ✅ Prevents Django from creating a table for this
+        abstract = True
 
     def clean(self):
         """Validate logic before saving"""
@@ -48,7 +48,7 @@ class BaseCompartment(models.Model):
         """Auto-generate intake records when a repeated medicine is added"""
         self.clean()  # Validate before saving
         super().save(*args, **kwargs)  # Save the medicine first
-
+        
         if self.to_be_repeated:
             # ✅ Delete old intakes to avoid duplicates
             from .models import CompartmentIntake  # Prevent circular import
@@ -80,7 +80,6 @@ class BaseCompartment(models.Model):
 # ✅ Concrete Compartment Models (Database Tables)
 class Compartment1(BaseCompartment):
     compartment_id = 1
-
 
 class Compartment2(BaseCompartment):
     compartment_id = 2

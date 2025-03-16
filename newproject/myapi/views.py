@@ -12,6 +12,11 @@ from .serializer import (
 from .models import User, Compartment1, Compartment2, Compartment3, CompartmentIntake
 from django.utils.timezone import localtime, now
 
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import json
+
+
 def get_compartment_model(compartment_id):
     """Return the correct compartment model based on the given ID."""
     compartments = {
@@ -76,7 +81,7 @@ def medicine_detail(request, compartment_id, pk):
         return Response({"message": "Medicine deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 
 @api_view(['GET'])
-def get_pending_intakes(request):
+def get_pending_intakes(request): #/medicines/intakes/pending
     """Retrieve all pending medicine intakes from all compartments."""
     pending_intakes = CompartmentIntake.objects.filter(taken=False).order_by('intake_time')
     serializer = CompartmentIntakeSerializer(pending_intakes, many=True)
@@ -163,6 +168,8 @@ def get_pending_intakes_by_compartment(request, comp_id):
         taken=False
     ).order_by('intake_time')
 
+    #create an entry of still not taken medicines for each compartment and for each day
+
     # Serialize and return the response
     serializer = CompartmentIntakeSerializer(pending_intakes, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)
@@ -184,6 +191,42 @@ def get_taken_intakes_by_compartment(request, comp_id):
         taken=True
     ).order_by('-taken_time')  # Order by most recent taken intake first
 
+    # we still have to create an entry on a table of taken medicines
     # Serialize and return the response
     serializer = CompartmentIntakeSerializer(taken_intakes, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+############ ADAFRUIT IMPLEMENTATION ############
+
+@csrf_exempt
+def adafruit_webhook(request):
+    """Handles Webhook updates from Adafruit IO and updates the database"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)  # Read incoming data
+            feed_name = data.get("feed_key")  # Example: "comp1"
+            new_value = int(data.get("value"))  # Number of medicines left
+
+            # Extract the compartment number from the feed name
+            if not feed_name.startswith("comp"):
+                return JsonResponse({"error": "Invalid feed name format"}, status=400)
+
+            compartment_id = int(feed_name.replace("comp", ""))  # Convert "comp1" → 1
+            CompartmentModel, _ = get_compartment_model(compartment_id)
+
+            if CompartmentModel:
+                compartment = CompartmentModel.objects.first()  # Assume 1 device per compartment
+
+                if compartment:
+                    compartment.number_of_medicines = new_value
+                    compartment.save()
+                    return JsonResponse({"message": f"Updated {feed_name} to {new_value}"}, status=200)
+
+            return JsonResponse({"error": f"No compartment found for {feed_name}"}, status=404)
+
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+    return JsonResponse({"error": "Invalid request"}, status=400)
+
